@@ -11,18 +11,24 @@ import json
 if not firebase_admin._apps:
     try:
         # Пробуем получить ключ из Secrets (для Streamlit Cloud)
-        if "FIREBASE_KEY" in st.secrets:
-            creds_dict = json.loads(st.secrets["FIREBASE_KEY"])
-            cred = credentials.Certificate(creds_dict)
-            firebase_admin.initialize_app(cred)
-        else:
+        try:
+            if "FIREBASE_KEY" in st.secrets:
+                creds_dict = json.loads(st.secrets["FIREBASE_KEY"])
+                cred = credentials.Certificate(creds_dict)
+                firebase_admin.initialize_app(cred)
+        except (FileNotFoundError, KeyError, TypeError):
+            # Если secrets нет, используем локальный файл
+            pass
+        
+        # Проверяем, инициализирован ли Firebase
+        if not firebase_admin._apps:
             # Локальный режим (с файла)
             KEY_PATH = os.getenv("FIREBASE_KEY", "serviceAccountKey.json")
             if os.path.exists(KEY_PATH):
                 cred = credentials.Certificate(KEY_PATH)
                 firebase_admin.initialize_app(cred)
             else:
-                st.error("Ошибка: Firebase ключ не найден.")
+                st.error("Ошибка: Файл serviceAccountKey.json не найден.")
                 st.stop()
     except Exception as e:
         st.error(f"Ошибка подключения к Firebase: {e}")
