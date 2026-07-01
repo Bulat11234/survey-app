@@ -5,16 +5,28 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 import os
+import json
 
-# --- 1. Инициализация Firebase ---
-KEY_PATH = os.getenv("FIREBASE_KEY", "serviceAccountKey.json")
-
+# --- Инициализация Firebase ---
 if not firebase_admin._apps:
-    if not os.path.exists(KEY_PATH):
-        st.error("Ошибка: Файл serviceAccountKey.json не найден. Проверьте настройки Firebase.")
+    try:
+        # Пробуем получить ключ из Secrets (для Streamlit Cloud)
+        if "FIREBASE_KEY" in st.secrets:
+            creds_dict = json.loads(st.secrets["FIREBASE_KEY"])
+            cred = credentials.Certificate(creds_dict)
+            firebase_admin.initialize_app(cred)
+        else:
+            # Локальный режим (с файла)
+            KEY_PATH = os.getenv("FIREBASE_KEY", "serviceAccountKey.json")
+            if os.path.exists(KEY_PATH):
+                cred = credentials.Certificate(KEY_PATH)
+                firebase_admin.initialize_app(cred)
+            else:
+                st.error("Ошибка: Firebase ключ не найден.")
+                st.stop()
+    except Exception as e:
+        st.error(f"Ошибка подключения к Firebase: {e}")
         st.stop()
-    cred = credentials.Certificate(KEY_PATH)
-    firebase_admin.initialize_app(cred)
 
 db = firestore.client()
 
